@@ -40,15 +40,18 @@ pipeline {
                 sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
             }
         }
+stage('Deploy to Kubernetes') {
+    steps {
 
-        stage('Deploy to Kubernetes') {
-            steps {
+        sh '''
+        export KUBECONFIG=/var/jenkins_home/.kube/config
 
-                sh '''
-                kubectl set image deployment/python-app \
-                python-app=$IMAGE_NAME:$IMAGE_TAG -n dev
-                '''
-            }
-        }
+        kubectl config set-cluster minikube --insecure-skip-tls-verify=true
+
+        kubectl set image deployment/python-app \
+        python-app=$IMAGE_NAME:$IMAGE_TAG -n dev
+        '''
+    }
+}
     }
 }
