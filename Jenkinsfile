@@ -12,7 +12,7 @@ pipeline {
         stage('Clone Code') {
             steps {
                 git branch: 'main',
-                url: 'https://github.com/barak9/python-app.git'
+                    url: 'https://github.com/barak9/python-app.git'
             }
         }
 
@@ -24,12 +24,13 @@ pipeline {
 
         stage('Docker Login') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
                     sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
                 }
             }
@@ -40,18 +41,22 @@ pipeline {
                 sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
             }
         }
-stage('Deploy to Kubernetes') {
-    steps {
 
-        sh '''
-        export KUBECONFIG=/var/jenkins_home/.kube/config
+        stage('Deploy to Kubernetes') {
+            steps {
+                sh '''
+                export KUBECONFIG=/var/jenkins_home/.kube/config
 
-        kubectl config set-cluster minikube --insecure-skip-tls-verify=true
+                kubectl create namespace dev --dry-run=client -o yaml | kubectl apply -f -
 
-        kubectl set image deployment/python-app \
-        python-app=$IMAGE_NAME:$IMAGE_TAG -n dev
-        '''
-    }
-}
+                kubectl apply -f deployment.yaml -n dev
+
+                kubectl set image deployment/python-app \
+                python-app=$IMAGE_NAME:$IMAGE_TAG -n dev
+
+                kubectl rollout status deployment/python-app -n dev
+                '''
+            }
+        }
     }
 }
